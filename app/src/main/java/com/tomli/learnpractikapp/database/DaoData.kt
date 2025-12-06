@@ -15,9 +15,9 @@ interface DaoData {
     @Query("update collections set `values`=:values where id=:id")
     suspend fun updateVals(values: String, id: Int)
 
-    @Query("select (id, name, `schema`, `values`) from collections where id=:tableId ")
-    suspend fun getTableById(tableId: Int): DynamicTableEntity
+    @Query("select * from collections where id=:tableId ")
+    suspend fun getTableById(tableId: Int): Collections
 
-    @Query("update collections set schema=:schemaJson")
+    @Query("update collections set schema=:schemaJson and `values`=:rowsJson where id=:id")
     suspend fun update(schemaJson: String, rowsJson: String, id: Int)
 }

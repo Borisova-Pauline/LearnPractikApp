@@ -20,7 +20,7 @@ class MainActivity : ComponentActivity() {
 }
 
 
-@Composable
+/*@Composable
 fun NavigScreens(
     val navController = 1
-)
+)*/

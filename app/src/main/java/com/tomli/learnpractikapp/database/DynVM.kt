@@ -5,11 +5,11 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.tomli.learnpractikapp.Applic
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 
 class DynVM(val database: CollectDB): ViewModel() {
     var collections = database.daoData.GetCollections()
-
 
 
     companion object{
@@ -33,8 +33,8 @@ class DynamicTableRepository(val dao: DaoData) {
 
         // Десериализуем JSON обратно в объекты
         return DynamicTable(
-            schema = Json.decodeFromString(entity.schemaJson),
-            rows = Json.decodeFromString(entity.rowsJson)
+            schema = Json.decodeFromString(entity.schema!!),
+            rows = Json.decodeFromString(entity.values!!)
         )
     }
 
