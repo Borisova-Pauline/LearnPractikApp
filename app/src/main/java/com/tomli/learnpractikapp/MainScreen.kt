@@ -24,19 +24,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.tomli.learnpractikapp.database.DynVM
 import com.tomli.learnpractikapp.ui.theme.LearnPractikAppTheme
 
 @Composable
-fun MainScreen(colVM: DynVM = viewModel(factory = DynVM.factory)){
+fun MainScreen(navController: NavController, colVM: DynVM = viewModel(factory = DynVM.factory)){
     var colls = colVM.collections.collectAsState(initial = emptyList())
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(bottom=innerPadding.calculateBottomPadding())){
             Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.tertiary)){
-                Spacer(modifier=Modifier.fillMaxWidth().height(innerPadding.calculateTopPadding()).background(color=Color(
-                    0x27000000
-                )
-                ))
+                Spacer(modifier=Modifier.fillMaxWidth().height(innerPadding.calculateTopPadding()).background(color=Color(0x27000000)))
                 Text(text = "Коллекции", color = Color.White, modifier = Modifier.fillMaxWidth().padding(15.dp),
                     textAlign = TextAlign.Center, fontSize = 22.sp)
             }
@@ -61,6 +59,6 @@ fun MainScreen(colVM: DynVM = viewModel(factory = DynVM.factory)){
 @Composable
 fun GreetingPreview() {
     LearnPractikAppTheme {
-        MainScreen()
+        //MainScreen()
     }
 }

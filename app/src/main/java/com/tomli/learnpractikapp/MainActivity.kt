@@ -5,6 +5,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.tomli.learnpractikapp.ui.theme.LearnPractikAppTheme
 
 class MainActivity : ComponentActivity() {
@@ -13,14 +16,24 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             LearnPractikAppTheme {
-                MainScreen()
+                NavigScreens()
             }
         }
     }
 }
 
 
-/*@Composable
-fun NavigScreens(
-    val navController = 1
-)*/
+@Composable
+fun NavigScreens(){
+    val navController = rememberNavController()
+    NavHost(
+        navController = navController, startDestination = "mainScreen"
+    ){
+        composable("mainScreen"){
+            MainScreen(navController)
+        }
+        composable("tablesScreen"){
+            TablesScreen(navController)
+        }
+    }
+}
