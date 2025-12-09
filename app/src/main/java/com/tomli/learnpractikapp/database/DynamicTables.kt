@@ -14,7 +14,7 @@ import kotlinx.serialization.json.Json
 @Serializable
 data class TableRow(
     val schema: TableSchema,
-    val data: Map<String, @kotlinx.serialization.Polymorphic Any?>
+    val data: Map<String, /*@Serializable(with=g::class) Any?*//*@kotlinx.serialization.Polymorphic Any?*/String>
 )
 
 @Serializable
@@ -23,6 +23,7 @@ data class DynamicTable(
     val rows: List<TableRow>
 )
 
+@Serializable
 data class DynamicTableEntity(
     val tableId: Int,
     val tableName: String,
@@ -41,5 +42,7 @@ data class TableSchema(
         val displayName: String,
         val order: Int //Порядок отображения
     )
+
+    @Serializable
     enum class ColumnType { STRING, INTEGER, DOUBLE, BOOLEAN, DATE }
 }

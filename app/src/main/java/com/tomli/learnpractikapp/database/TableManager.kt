@@ -38,7 +38,7 @@ class TableManager(private val repository: DynamicTableRepository, private val t
         columnName: String,
         type: TableSchema.ColumnType,
         displayName: String = columnName,
-        defaultValue: Any? = null
+        defaultValue: String = ""
     ) {
         // 1. Обновляем схему
         val newColumnInfo = TableSchema.ColumnInfo(

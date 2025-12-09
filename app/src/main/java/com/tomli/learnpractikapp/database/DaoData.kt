@@ -20,4 +20,7 @@ interface DaoData {
 
     @Query("update collections set schema=:schemaJson and `values`=:rowsJson where id=:id")
     suspend fun update(schemaJson: String, rowsJson: String, id: Int)
+
+    @Query("insert into collections (name, `values`, schema) values (:name, :value, :schema)")
+    suspend fun addCollection(name: String, value: String, schema: String)
 }

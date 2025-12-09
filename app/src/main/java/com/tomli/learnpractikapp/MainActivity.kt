@@ -5,9 +5,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.tomli.learnpractikapp.ui.theme.LearnPractikAppTheme
 
 class MainActivity : ComponentActivity() {
@@ -32,8 +34,9 @@ fun NavigScreens(){
         composable("mainScreen"){
             MainScreen(navController)
         }
-        composable("tablesScreen"){
-            TablesScreen(navController)
+        composable("tablesScreen/{id}", arguments = listOf(navArgument("id") {type = NavType.IntType})){
+                navBackStack ->  val id: Int = navBackStack.arguments?.getInt("id") ?: -1
+            TablesScreen(navController, id)
         }
     }
 }

@@ -3,13 +3,24 @@ package com.tomli.learnpractikapp.database
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.tomli.learnpractikapp.Applic
-import kotlinx.serialization.decodeFromString
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
 class DynVM(val database: CollectDB): ViewModel() {
     var collections = database.daoData.GetCollections()
+
+    fun addCollection(name: String, value: List<TableRow>, schema: TableSchema)=viewModelScope.launch{
+        val converter=Converters()
+        val valInJson= converter.rowsToJson(value)
+        val schemaInJson = converter.schemaToJson(schema)
+        database.daoData.addCollection(name, valInJson, schemaInJson)
+    }
+
+    var repos=DynamicTableRepository(database.daoData)
+
 
 
     companion object{
