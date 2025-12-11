@@ -14,13 +14,13 @@ import kotlinx.serialization.json.Json
 @Serializable
 data class TableRow(
     val schema: TableSchema,
-    val data: Map<String, /*@Serializable(with=g::class) Any?*//*@kotlinx.serialization.Polymorphic Any?*/String>
+    var data: Map<String, String>
 )
 
 @Serializable
 data class DynamicTable(
     val schema: TableSchema,
-    val rows: List<TableRow>
+    var rows: List<TableRow>
 )
 
 @Serializable
@@ -39,7 +39,7 @@ data class TableSchema(
     @Serializable
     data class ColumnInfo(
         val type: ColumnType,
-        val displayName: String,
+        var displayName: String,
         val order: Int //Порядок отображения
     )
 

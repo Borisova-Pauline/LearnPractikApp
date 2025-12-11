@@ -1,5 +1,6 @@
 package com.tomli.learnpractikapp.database
 
+import androidx.room.ColumnInfo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,7 +31,6 @@ class TableManager(private val repository: DynamicTableRepository, private val t
             schemaJson = Json.encodeToString(currentTable.schema),
             rowsJson = Json.encodeToString(currentTable.rows)
         )
-
         repository.dao.update(entity.schemaJson, entity.rowsJson, entity.tableId)
     }
 
@@ -79,15 +79,27 @@ class TableManager(private val repository: DynamicTableRepository, private val t
             }
             row.copy(data = updatedData)
         }
-
         _currentTable.value = DynamicTable(updatedSchema, updatedRows)
-
     }
 
-    /*private fun saveToJson() {
-        val jsonString = Json { prettyPrint = true }.encodeToString(dynamicTable)
-
-        // Запись jsonString в файл/базу данных
-        // Например: File("table.json").writeText(jsonString)
-    }*/
+    fun addRow(){
+        if(!dynamicTable.value!!.rows[0].data.isEmpty()){
+            var updatedTableRow: Map<String, String> = dynamicTable.value!!.rows[0].data.toMutableMap().apply {
+                keys.forEach{key->
+                    this[key]=""
+                }
+            }
+            val newTableRow = dynamicTable.value?.rows!!.toMutableList()
+            newTableRow.add(TableRow(schema = dynamicTable.value?.schema!!, data = updatedTableRow))
+            _currentTable.value= DynamicTable(dynamicTable.value?.schema!!, newTableRow)
+        }else{
+            val tableRows: MutableMap<String, String> = mutableMapOf()
+            dynamicTable.value?.schema!!.columns.toMutableMap().apply {
+                keys.forEach{key->
+                    tableRows.put(key, "")
+                }
+            }
+            _currentTable.value= DynamicTable(dynamicTable.value?.schema!!, listOf(TableRow(dynamicTable.value?.schema!!, data=tableRows)))
+        }
+    }
 }

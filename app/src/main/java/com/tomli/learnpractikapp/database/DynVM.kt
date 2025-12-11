@@ -21,6 +21,14 @@ class DynVM(val database: CollectDB): ViewModel() {
 
     var repos=DynamicTableRepository(database.daoData)
 
+    fun setNewName(name: String, id: Int)=viewModelScope.launch {
+        database.daoData.setNewName(name, id)
+    }
+
+    fun deleteCollection(id: Int)=viewModelScope.launch {
+        database.daoData.deleteCollection(id)
+    }
+
 
 
     companion object{

@@ -18,9 +18,15 @@ interface DaoData {
     @Query("select * from collections where id=:tableId ")
     suspend fun getTableById(tableId: Int): Collections
 
-    @Query("update collections set schema=:schemaJson and `values`=:rowsJson where id=:id")
+    @Query("update collections set schema=:schemaJson, `values`=:rowsJson where id=:id")
     suspend fun update(schemaJson: String, rowsJson: String, id: Int)
 
     @Query("insert into collections (name, `values`, schema) values (:name, :value, :schema)")
     suspend fun addCollection(name: String, value: String, schema: String)
+
+    @Query("update collections set name=:name where id=:id")
+    suspend fun setNewName(name: String, id: Int)
+
+    @Query("delete from collections where id=:id")
+    suspend fun deleteCollection(id: Int)
 }
