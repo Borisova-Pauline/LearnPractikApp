@@ -36,6 +36,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -98,15 +99,16 @@ fun TablesScreen(navController: NavController, id: Int, colVM: DynVM = viewModel
                 Box{
                     Text(text = "${nameTable.value ?: "Таблица"}", color = Color.White, modifier = Modifier.fillMaxWidth().padding(top=15.dp, bottom = 5.dp),
                         textAlign = TextAlign.Center, fontSize = 22.sp)
-                    Image(painter= painterResource(R.drawable.ic_launcher_foreground), contentDescription = null,
-                        modifier= Modifier.padding(bottom = 10.dp, start=10.dp).size(35.dp).clickable { navController.navigate("mainScreen") })
+                    Image(painter= painterResource(R.drawable.arrow_back), contentDescription = null,
+                        modifier= Modifier.padding(bottom = 10.dp, start=10.dp, top=15.dp).size(30.dp).clickable { navController.navigate("mainScreen") })
                 }
 
                 Row(modifier= Modifier.fillMaxWidth()){
+                    Spacer(Modifier.weight(1f))
                     Image(painter= painterResource(R.drawable.add_column), contentDescription = null,
-                        modifier= Modifier.padding(bottom = 10.dp, start=10.dp).size(35.dp).clickable { isCreateColumn.value=true })
+                        modifier= Modifier.padding(bottom = 10.dp, end=10.dp).size(35.dp).clickable { isCreateColumn.value=true })
                     Image(painter= painterResource(R.drawable.add_row), contentDescription = null,
-                        modifier= Modifier.padding(bottom = 10.dp, start=10.dp).size(35.dp).
+                        modifier= Modifier.padding(bottom = 10.dp, end=15.dp).size(35.dp).
                     clickable { tableManager.value.addRow(); launchedEffectDoer.value++ })
                 }
             }
@@ -147,6 +149,7 @@ fun TablesScreen(navController: NavController, id: Int, colVM: DynVM = viewModel
                                                     this.remove(item)
                                                 }
                                                 table.value!!.rows=updatedList
+                                                launchedEffectDoer.value++
                                             }
                                             isEditCell.value=true
                                         })
@@ -226,7 +229,7 @@ fun CellEditing(onDismiss: () -> Unit, onUpdate:()-> Unit, onDeleteRow:()->Unit,
                     Text(text=placeholder, color=Color.Gray)
                 })
                 Text(text="Сохранить", textAlign = TextAlign.Center, modifier=Modifier.padding(vertical = 30.dp).fillMaxWidth().clickable { onUpdate(); onDismiss() })
-                Text(text="Удалить строку", textAlign = TextAlign.Center, modifier=Modifier.padding(bottom = 30.dp).fillMaxWidth().clickable {isDelete.value })
+                Text(text="Удалить строку", textAlign = TextAlign.Center, modifier=Modifier.padding(bottom = 30.dp).fillMaxWidth().clickable {isDelete.value=true })
             }
         }
         if(isDelete.value){
