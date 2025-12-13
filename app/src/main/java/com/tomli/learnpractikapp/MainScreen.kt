@@ -1,5 +1,11 @@
 package com.tomli.learnpractikapp
 
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -7,12 +13,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -24,6 +32,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -34,9 +43,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.toLowerCase
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,6 +58,11 @@ import com.tomli.learnpractikapp.database.DynVM
 import com.tomli.learnpractikapp.database.TableRow
 import com.tomli.learnpractikapp.database.TableSchema
 import com.tomli.learnpractikapp.ui.theme.LearnPractikAppTheme
+import kotlinx.coroutines.Dispatchers
+import org.apache.poi.ss.usermodel.CellType
+import org.apache.poi.ss.usermodel.WorkbookFactory
+import java.io.File
+import java.io.FileOutputStream
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -59,7 +75,7 @@ fun MainScreen(navController: NavController, colVM: DynVM = viewModel(factory = 
     val isDeleteCollection =remember { mutableStateOf(false) }
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(bottom=innerPadding.calculateBottomPadding())){
-            Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.tertiary)){
+            Column(modifier = Modifier.fillMaxWidth().background(color=Color(0xff9967cc))){
                 Spacer(modifier=Modifier.fillMaxWidth().height(innerPadding.calculateTopPadding()).background(color=Color(0x27000000)))
                 Box(modifier=Modifier.wrapContentHeight().fillMaxWidth()){
                     Text(text = "Коллекции", color = Color.White, modifier = Modifier.fillMaxWidth().padding(15.dp),
@@ -82,8 +98,10 @@ fun MainScreen(navController: NavController, colVM: DynVM = viewModel(factory = 
                         Text(text=item.name!!, color=Color.White)
                         DropdownMenu(expanded = showDropDown.value, onDismissRequest = { showDropDown.value = false }) {
                             DropdownMenuItem(text = { Text("Редактировать") },
-                                onClick = {isUpdateCollection.value=true ; showDropDown.value= false })
-                            DropdownMenuItem(text = { Text("Удалить") },
+                                onClick = {isUpdateCollection.value=true; showDropDown.value= false })
+                            DropdownMenuItem(text = { Text("Экспорт") },
+                                onClick = {/*isUpdateCollection.value=true; showDropDown.value= false */})
+                            DropdownMenuItem(text = { Text("Удалить", color=Color.Red) },
                                 onClick = { isDeleteCollection.value=true; showDropDown.value= false })
                         }
                     }
@@ -115,6 +133,16 @@ fun CreateCollection(onDismiss:()->Unit, colVM: DynVM = viewModel(factory = DynV
     val name = remember { mutableStateOf("") }
     val columns = remember { mutableStateOf("1") }
     val rows =remember { mutableStateOf("0") }
+    val wayToCreate= remember { mutableStateOf(WayToCreate.Grid) }
+    val pathImport = remember { mutableStateOf<Uri?>(null) }
+    val context = LocalContext.current
+
+    val filePickerLauncher= rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ){
+        uri: Uri? ->
+            pathImport.value= uri
+    }
     Dialog(onDismiss){
         Card(modifier=Modifier.padding(horizontal = 30.dp)){
             Column(modifier=Modifier.padding(15.dp)) {
@@ -122,26 +150,79 @@ fun CreateCollection(onDismiss:()->Unit, colVM: DynVM = viewModel(factory = DynV
                 OutlinedTextField(value=name.value, onValueChange = {text-> name.value=text},
                     placeholder={ Text(text="Введите название", color=Color.Gray)},
                     label={Text(text="Название коллекции")})
-                OutlinedTextField(value=columns.value, onValueChange = {text-> columns.value=text}, placeholder={
-                    Text(text="Введите число больше 0", color=Color.Gray)
-                }, label={Text(text="Количество столбцов")}, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                OutlinedTextField(value=rows.value, onValueChange = {text-> rows.value=text}, placeholder={
-                    Text(text="Введите число >=0", color=Color.Gray)
-                }, label={Text(text="Количество строк")}, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                Text(text="Создать", textAlign = TextAlign.Center, modifier=Modifier.padding(vertical = 30.dp).fillMaxWidth().clickable {
-                    val schema = createSchemaOnCreating(name.value, columns.value.toInt())
-                    colVM.addCollection(name=name.value,
-                        value=createValueOnCreating(schema, rows.value.toInt()),
-                        schema=schema)
-                    onDismiss() })
+                Row(Modifier.height(25.dp)){
+                    Text(text="Вручную", textAlign = TextAlign.Center, modifier=Modifier.weight(1f).clickable { wayToCreate.value=WayToCreate.Grid }, color= if(wayToCreate.value==WayToCreate.Grid) Color(0xff7b00ff) else Color(0xff838383))
+                    Text(text="Импорт", textAlign = TextAlign.Center, modifier=Modifier.weight(1f).clickable { wayToCreate.value=WayToCreate.Import }, color= if(wayToCreate.value==WayToCreate.Import) Color(0xff7b00ff) else Color(0xff838383))
+                }
+                when(wayToCreate.value){
+                    WayToCreate.Grid->{
+                        OutlinedTextField(value=columns.value, onValueChange = {text-> columns.value=text}, placeholder={
+                            Text(text="Введите число больше 0", color=Color.Gray)
+                        }, label={Text(text="Количество столбцов")}, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                        OutlinedTextField(value=rows.value, onValueChange = {text-> rows.value=text}, placeholder={
+                            Text(text="Введите число >=0", color=Color.Gray)
+                        }, label={Text(text="Количество строк")}, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                        Text(text="Создать", textAlign = TextAlign.Center, modifier=Modifier.padding(vertical = 30.dp).fillMaxWidth().clickable {
+                            if(name.value!=""){
+                                try{
+                                    if(columns.value.toInt()>0 && rows.value.toInt()>=0){
+                                        val schema = createSchemaOnCreating(name.value, columns.value.toInt())
+                                        colVM.addCollection(name=name.value,
+                                            value=createValueOnCreating(schema, rows.value.toInt()),
+                                            schema=schema)
+                                        onDismiss()
+                                    }else{
+                                        Toast.makeText(context, "Неправильный ввод строк или столбцов", Toast.LENGTH_LONG).show()
+                                    }
+                                }catch (e: Exception){
+                                    Toast.makeText(context, "Неправильный ввод строк или столбцов", Toast.LENGTH_LONG).show()
+                                }
+                            }else{
+                                Toast.makeText(context, "Введите название", Toast.LENGTH_LONG).show()
+                            }})
+                    }
+                    WayToCreate.Import->{
+                        val fileName=getFileName(pathImport.value, context)
+                        OutlinedCard(modifier = Modifier.fillMaxWidth().padding(top=10.dp)){
+                            Text(text= fileName, modifier = Modifier.fillMaxWidth().padding(5.dp), textAlign = TextAlign.Center)
+                        }
+                        Text(text="Выбрать файл", modifier = Modifier.clickable {
+                            filePickerLauncher.launch("*/*")
+                        }.padding(vertical=20.dp).fillMaxWidth(), textAlign = TextAlign.Center)
+                        Text(text="Создать", modifier = Modifier.padding(bottom=20.dp).clickable {
+                            if(name.value!=""){
+                                if(getFileExtension(fileName) && fileName!="Unknown.xlsx"){
+                                    colVM.CreateFromImport(context, pathImport.value, name.value)
+                                }else if(fileName=="Unknown.xlsx"){
+                                    Toast.makeText(context, "Не выбран файл", Toast.LENGTH_LONG).show()
+                                }else if(!getFileExtension(fileName)){
+                                    Toast.makeText(context, "Расширение файла не подходит, должно быть .XLSX", Toast.LENGTH_LONG).show()
+                                }else{
+                                    Toast.makeText(context, "Ошибка", Toast.LENGTH_LONG).show()
+                                }
+                            }else{
+                                Toast.makeText(context, "Введите имя", Toast.LENGTH_LONG).show()
+                            }
+                            onDismiss()
+                        }.padding(vertical=10.dp).fillMaxWidth(), textAlign = TextAlign.Center,
+                            color=if(getFileExtension(fileName) && fileName!="Unknown.xlsx") Color(0xff00be19) else Color(0xffff0000))
+                    }
+                }
             }
         }
     }
 }
 
+enum class WayToCreate{
+    Grid, Import
+}
+
+
+
 @Composable
 fun UpdateCollection(onDismiss: () -> Unit, id: Int, origName: String, colVM: DynVM = viewModel(factory = DynVM.factory)){
     val name = remember { mutableStateOf(origName) }
+    val context = LocalContext.current
     Dialog(onDismiss){
         Card(modifier=Modifier.padding(horizontal = 30.dp)){
             Column(modifier=Modifier.padding(15.dp)){
@@ -150,8 +231,12 @@ fun UpdateCollection(onDismiss: () -> Unit, id: Int, origName: String, colVM: Dy
                     placeholder={ Text(text="Введите название", color=Color.Gray)},
                     label={Text(text="Название коллекции")})
                 Text(text="Сохранить", textAlign = TextAlign.Center, modifier=Modifier.padding(vertical = 30.dp).fillMaxWidth().clickable {
-                    colVM.setNewName(name.value, id)
-                    onDismiss() })
+                    if(name.value!=""){
+                        colVM.setNewName(name.value, id)
+                        onDismiss()
+                    }else{
+                        Toast.makeText(context, "Введите название", Toast.LENGTH_LONG).show()
+                    }})
             }
         }
     }
@@ -181,3 +266,39 @@ fun createSchemaOnCreating(name: String, columnCount: Int): TableSchema{
 
     return TableSchema(tableName = name, columns = columns)
 }
+
+
+fun getFileName(uri: Uri?, context: Context): String{
+    var fileName="Unknown.xlsx"
+    if(uri!=null){
+        if(uri.scheme=="content"){
+            context.contentResolver.query(uri, null, null, null, null)?.use{ cursor->
+                if(cursor.moveToFirst()){
+                    val nameIndex=cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if(nameIndex!=-1){
+                        fileName=cursor.getString(nameIndex)
+                    }
+                }
+            }
+        }else if(uri.scheme=="file"){
+            fileName=uri.lastPathSegment ?: "Unknown.xlsx"
+        }
+    }
+    return fileName
+}
+
+
+fun getFileExtension(fileName: String): Boolean{
+    val dotIndex=fileName.lastIndexOf('.')
+    var ext=".h"
+    if(dotIndex!=-1 && dotIndex<fileName.length-1){
+        ext=fileName.substring(dotIndex+1).toLowerCase()
+    }
+    if(ext=="xlsx"){
+        return true
+    }else{
+        return false
+    }
+}
+
+

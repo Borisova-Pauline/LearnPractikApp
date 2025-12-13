@@ -13,7 +13,7 @@ android {
 
     defaultConfig {
         applicationId = "com.tomli.learnpractikapp"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 35
         versionCode = 1
         versionName = "0.1"
@@ -46,6 +46,11 @@ android {
 }
 
 dependencies {
+    val poi_ver = "5.2.3"
+
+    //implementation ("org.apache.poi:poi:$poi_ver")
+    implementation ("org.apache.poi:poi-ooxml:$poi_ver")
+
     val room_version = "2.7.2"
 
     implementation("androidx.room:room-runtime:$room_version")

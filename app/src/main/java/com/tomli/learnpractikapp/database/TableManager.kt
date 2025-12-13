@@ -10,12 +10,16 @@ import kotlinx.serialization.json.Json
 class TableManager(private val repository: DynamicTableRepository, private val tableId: Int) {
     private var _currentTable = MutableStateFlow<DynamicTable?>(null)
     var dynamicTable: StateFlow<DynamicTable?> = _currentTable.asStateFlow()
+    var nameTable = "Таблица"
 
     // Загрузка данных из БД
     suspend fun loadTableFromDatabase() {
         try {
-            val table = repository.loadTable(tableId)
+            val entityTable=repository.loadTable(tableId)
+            val table = DynamicTable(schema = Json.decodeFromString(entityTable.schema!!),
+                rows = Json.decodeFromString(entityTable.values!!))
             _currentTable.value = table
+            nameTable=entityTable.name!!
         } catch (e: Exception) {
             // Обработка ошибок (таблица не найдена и т.д.)
             //_currentTable.value = createEmptyTable()

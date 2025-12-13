@@ -1,6 +1,7 @@
 package com.tomli.learnpractikapp
 
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -8,8 +9,10 @@ import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -39,6 +42,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -77,6 +81,8 @@ fun TablesScreen(navController: NavController, id: Int, colVM: DynVM = viewModel
 
     val launchedEffectDoer = remember { mutableStateOf(0) }
     val nameTable = remember { mutableStateOf<String?>(null) }
+
+    val context = LocalContext.current
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         LaunchedEffect(Unit) {
             scope.launch{
@@ -91,10 +97,11 @@ fun TablesScreen(navController: NavController, id: Int, colVM: DynVM = viewModel
             }
         }
         if(table.value!=null){
-            nameTable.value=table.value!!.schema.tableName
+            //nameTable.value=table.value!!.schema.tableName
+            nameTable.value=tableManager.value.nameTable
         }
         Column(modifier = Modifier.fillMaxSize().padding(bottom=innerPadding.calculateBottomPadding())){
-            Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.tertiary)){
+            Column(modifier = Modifier.fillMaxWidth().background(color=Color(0xff6a587e))){
                 Spacer(modifier= Modifier.fillMaxWidth().height(innerPadding.calculateTopPadding()).background(color= Color(0x27000000)))
                 Box{
                     Text(text = "${nameTable.value ?: "Таблица"}", color = Color.White, modifier = Modifier.fillMaxWidth().padding(top=15.dp, bottom = 5.dp),
@@ -119,7 +126,13 @@ fun TablesScreen(navController: NavController, id: Int, colVM: DynVM = viewModel
                             Box(modifier=Modifier.height(30.dp).width(120.dp).background(color=Color(0xFFAD92C9)).padding(2.dp).background(color=Color(0xffeadff5))){
                                 Text(text="${item!!.value.displayName}", textAlign = TextAlign.Center, modifier=Modifier.fillMaxWidth().clickable {
                                     nameRow.value=item!!.value.displayName
-                                    updateColumnNameLambda = {item!!.value.displayName=nameRow.value; launchedEffectDoer.value++ }
+                                    updateColumnNameLambda = {
+                                        if(nameRow.value!=""){
+                                            item!!.value.displayName=nameRow.value; launchedEffectDoer.value++
+                                        }else{
+                                            Toast.makeText(context, "Название не может быть пустым", Toast.LENGTH_LONG).show()
+                                        }
+                                    }
                                     deleteColumnLambda = {tableManager.value.removeColumn(item.key)}
                                     isUpdateColumn.value=true
                                 })
@@ -130,13 +143,10 @@ fun TablesScreen(navController: NavController, id: Int, colVM: DynVM = viewModel
                 Column(modifier=Modifier.wrapContentSize()){
                     if(table.value!=null){
                         table.value!!.rows.forEach{ item ->
-                            Row(modifier=Modifier.wrapContentSize()){
+                            Row(modifier=Modifier.height(intrinsicSize = IntrinsicSize.Max)){
                                 item.data.forEach{ item2 ->
-                                    Box(modifier=Modifier.height(30.dp).width(120.dp).background(color=Color(
-                                        0xFF6A6173
-                                    )
-                                    ).padding(2.dp).background(color=Color(0xffffffff))){
-                                        Text(text= item2!!.value, textAlign = TextAlign.Center, modifier=Modifier.fillMaxWidth().clickable {
+                                    Box(modifier=Modifier.fillMaxHeight().width(120.dp).background(color=Color(0xFF6A6173)).padding(2.dp).background(color=Color(0xffffffff))
+                                        .clickable {
                                             cellValue.value=item2!!.value
                                             val keyThis = item2!!.key
                                             updateCellLambda={var updatedTableRow: Map<String, String> = item.data.toMutableMap().apply {
@@ -152,7 +162,8 @@ fun TablesScreen(navController: NavController, id: Int, colVM: DynVM = viewModel
                                                 launchedEffectDoer.value++
                                             }
                                             isEditCell.value=true
-                                        })
+                                        }){
+                                        Text(text= item2!!.value, textAlign = TextAlign.Center, modifier=Modifier.fillMaxWidth())
                                     }
                                 }
                             }
@@ -177,6 +188,7 @@ fun TablesScreen(navController: NavController, id: Int, colVM: DynVM = viewModel
 @Composable
 fun CreateRowDialog(onDismiss:()->Unit, onCreate:(name: String)-> Unit, placeholder: String){
     var name = remember{ mutableStateOf("")}
+    val context = LocalContext.current
     Dialog(onDismiss) {
         Card(modifier=Modifier.padding(horizontal = 30.dp)){
             Column(modifier=Modifier.padding(15.dp)) {
@@ -184,7 +196,12 @@ fun CreateRowDialog(onDismiss:()->Unit, onCreate:(name: String)-> Unit, placehol
                 OutlinedTextField(value=name.value, onValueChange = {text-> name.value=text}, placeholder={
                     Text(text=placeholder, color=Color.Gray)
                 })
-                Text(text="Создать", textAlign = TextAlign.Center, modifier=Modifier.padding(vertical = 30.dp).fillMaxWidth().clickable { onCreate(name.value); onDismiss() })
+                Text(text="Создать", textAlign = TextAlign.Center, modifier=Modifier.padding(vertical = 30.dp).fillMaxWidth().clickable {
+                    if(name.value!=""){
+                        onCreate(name.value); onDismiss()
+                    }else{
+                        Toast.makeText(context, "Введите название", Toast.LENGTH_LONG).show()
+                    }})
             }
         }
     }
@@ -202,7 +219,7 @@ fun EditRowDialog(onDismiss:()->Unit, onUpdate:()-> Unit, onDelete:()->Unit, pla
                     Text(text=placeholder, color=Color.Gray)
                 })
                 Text(text="Сохранить", textAlign = TextAlign.Center, modifier=Modifier.padding(vertical = 30.dp).fillMaxWidth().clickable { onUpdate(); onDismiss() })
-                Text(text="Удалить", textAlign = TextAlign.Center, modifier=Modifier.padding(bottom = 30.dp).fillMaxWidth().clickable { isDelete.value=true })
+                Text(text="Удалить", textAlign = TextAlign.Center, color=Color.Red, modifier=Modifier.padding(bottom = 30.dp).fillMaxWidth().clickable { isDelete.value=true })
             }
         }
         if(isDelete.value){
@@ -224,12 +241,12 @@ fun CellEditing(onDismiss: () -> Unit, onUpdate:()-> Unit, onDeleteRow:()->Unit,
     Dialog(onDismiss) {
         Card(modifier=Modifier.padding(horizontal = 30.dp)){
             Column(modifier=Modifier.padding(15.dp)) {
-                Text(text="Редактирование столбца")
+                Text(text="Редактирование ячейки")
                 OutlinedTextField(value=cellValue, onValueChange = onTextChange, placeholder={
                     Text(text=placeholder, color=Color.Gray)
                 })
                 Text(text="Сохранить", textAlign = TextAlign.Center, modifier=Modifier.padding(vertical = 30.dp).fillMaxWidth().clickable { onUpdate(); onDismiss() })
-                Text(text="Удалить строку", textAlign = TextAlign.Center, modifier=Modifier.padding(bottom = 30.dp).fillMaxWidth().clickable {isDelete.value=true })
+                Text(text="Удалить строку", textAlign = TextAlign.Center, color=Color.Red, modifier=Modifier.padding(bottom = 30.dp).fillMaxWidth().clickable {isDelete.value=true })
             }
         }
         if(isDelete.value){
