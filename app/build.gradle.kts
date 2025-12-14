@@ -16,7 +16,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "0.1"
+        versionName = "0.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ksp{
@@ -48,8 +48,9 @@ android {
 dependencies {
     val poi_ver = "5.2.3"
 
-    //implementation ("org.apache.poi:poi:$poi_ver")
     implementation ("org.apache.poi:poi-ooxml:$poi_ver")
+
+    //implementation("com.github.andruhon:Android5xLSX:1.2.0")
 
     val room_version = "2.7.2"
 

@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.material3.SnackbarHostState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -11,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.google.android.material.tabs.TabLayout.Tab
 import com.tomli.learnpractikapp.Applic
+import com.tomli.learnpractikapp.createExcelFileInFolder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -84,6 +86,20 @@ class DynVM(val database: CollectDB): ViewModel() {
         }else{
             Toast.makeText(context, "Не удалось получить путь к файлу :(", Toast.LENGTH_LONG).show()
         }
+    }
+
+
+    fun ExportFromDynamicTable(id: Int, context: Context, folderUri: Uri, fileName: String)=viewModelScope.launch {
+        val entityTable=database.daoData.getTableById(id)
+        val table = DynamicTable(schema = Json.decodeFromString(entityTable.schema!!),
+            rows = Json.decodeFromString(entityTable.values!!))
+        createExcelFileInFolder(
+            context = context,
+            folderUri = folderUri,
+            fileName = fileName,
+            sheetName = "Лист1",
+            table = table
+        )
     }
 
 

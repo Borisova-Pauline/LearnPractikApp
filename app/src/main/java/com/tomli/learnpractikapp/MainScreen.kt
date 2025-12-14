@@ -1,7 +1,11 @@
 package com.tomli.learnpractikapp
 
+import android.content.ContentResolver
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
 import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -11,6 +15,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,6 +33,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -35,16 +41,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.toLowerCase
@@ -59,10 +69,20 @@ import com.tomli.learnpractikapp.database.TableRow
 import com.tomli.learnpractikapp.database.TableSchema
 import com.tomli.learnpractikapp.ui.theme.LearnPractikAppTheme
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.apache.poi.ss.usermodel.CellType
 import org.apache.poi.ss.usermodel.WorkbookFactory
 import java.io.File
+import android.provider.Settings
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.SnackbarHost
+import com.tomli.learnpractikapp.database.DynamicTable
+import kotlinx.serialization.json.JsonNull.content
+import org.apache.commons.io.output.ByteArrayOutputStream
+import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.FileOutputStream
+
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -73,6 +93,7 @@ fun MainScreen(navController: NavController, colVM: DynVM = viewModel(factory = 
     val itemId= remember { mutableStateOf(0) }
     val itemName=remember { mutableStateOf("") }
     val isDeleteCollection =remember { mutableStateOf(false) }
+    val isExportCollection =remember { mutableStateOf(false) }
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(bottom=innerPadding.calculateBottomPadding())){
             Column(modifier = Modifier.fillMaxWidth().background(color=Color(0xff9967cc))){
@@ -100,7 +121,7 @@ fun MainScreen(navController: NavController, colVM: DynVM = viewModel(factory = 
                             DropdownMenuItem(text = { Text("Редактировать") },
                                 onClick = {isUpdateCollection.value=true; showDropDown.value= false })
                             DropdownMenuItem(text = { Text("Экспорт") },
-                                onClick = {/*isUpdateCollection.value=true; showDropDown.value= false */})
+                                onClick = {isExportCollection.value=true; showDropDown.value= false })
                             DropdownMenuItem(text = { Text("Удалить", color=Color.Red) },
                                 onClick = { isDeleteCollection.value=true; showDropDown.value= false })
                         }
@@ -124,6 +145,9 @@ fun MainScreen(navController: NavController, colVM: DynVM = viewModel(factory = 
                         isDeleteCollection.value=false})},
                 dismissButton = {Text(text = "Отменить", modifier = Modifier.padding(5.dp)
                     .clickable { isDeleteCollection.value=false})})
+        }
+        if(isExportCollection.value){
+            ExportDialog({isExportCollection.value=false}, itemId.value, itemName.value)
         }
     }
 }
@@ -243,6 +267,96 @@ fun UpdateCollection(onDismiss: () -> Unit, id: Int, origName: String, colVM: Dy
 }
 
 
+@Composable
+fun ExportDialog(onDismiss: () -> Unit, id: Int, tableName: String, colVM: DynVM = viewModel(factory = DynVM.factory)){
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Состояния
+    var selectedFolderUri = remember { mutableStateOf<Uri?>(null) }
+    var folderName = remember { mutableStateOf("") }
+    var fileName = remember { mutableStateOf("$tableName.xlsx") }
+
+    // Ланчер для выбора папки (Storage Access Framework)
+    val folderPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree(),
+        onResult = { uri ->
+            uri?.let {
+                // Запрашиваем постоянный доступ к папке
+                context.contentResolver.takePersistableUriPermission(uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                            Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+                selectedFolderUri.value = uri
+                folderName.value = getFolderNameFromUri(uri) ?: "Неизвестная папка"
+            }
+        }
+    )
+
+    val manageStorageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {  }
+
+
+    Dialog(onDismiss) {
+        Card(modifier = Modifier.padding(horizontal = 30.dp)) {
+            Column(modifier = Modifier.padding(15.dp)) {
+                Text(text = "Экспорт коллекции \"$tableName\"", modifier=Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                OutlinedCard(modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
+                    if(selectedFolderUri.value!=null){
+                        val folder: String? = selectedFolderUri.value!!.path
+                        Text(
+                            text = /*folder ?: "Unknown",*/ folderName.value,
+                            modifier = Modifier.fillMaxWidth().padding(5.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }else{
+                        Text(
+                            text = "Unknown",
+                            modifier = Modifier.fillMaxWidth().padding(5.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+
+                Text(text = "Выбрать папку", modifier = Modifier.clickable {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        // Проверяем, есть ли доступ ко всему хранилищу
+                        if (Environment.isExternalStorageManager()) {
+                            folderPickerLauncher.launch(null)
+                        } else {
+                            // Запрашиваем полный доступ (опционально)
+                            val intent =
+                                Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                            intent.data = Uri.parse("package:${context.packageName}")
+                            manageStorageLauncher.launch(intent)
+                        }
+                    } else {
+                        folderPickerLauncher.launch(null)
+                    }
+                }.padding(vertical = 20.dp).fillMaxWidth(), textAlign = TextAlign.Center)
+                Text(
+                    text = "Создать XLSX в выбранной папке",
+                    modifier = Modifier.padding(bottom = 20.dp).clickable {
+                        if (selectedFolderUri.value != null && fileName.value.isNotBlank()) {
+                            colVM.ExportFromDynamicTable(id, context, selectedFolderUri.value!!, fileName.value)
+                        } else {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Сначала выберите папку")
+                            }
+                        }
+                        onDismiss()
+                    }.padding(vertical = 10.dp).fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    color = if (selectedFolderUri.value != null) Color(0xff00be19) else Color(0xffff0000)
+                )
+            }
+        }
+    }
+}
+
+
 fun createValueOnCreating(schema: TableSchema, rowCount: Int): List<TableRow>{
     var valueList= mutableListOf<TableRow>()
 
@@ -301,4 +415,137 @@ fun getFileExtension(fileName: String): Boolean{
     }
 }
 
+
+fun getFolderNameFromUri(fileUri: Uri?): String {
+    var folderName="Unknown folder"
+    if(fileUri!=null){
+        if(fileUri.scheme=="content"){
+            val path = fileUri.path
+            val lastIndex = path?.lastIndexOf(':')
+            folderName=path?.substring(lastIndex!!+1, path.length).toString()
+        }
+    }
+    return folderName
+}
+
+
+
+// Функция для создания Excel файла с использованием Apache POI
+fun createExcelFileInFolder(
+    context: Context,
+    folderUri: Uri,
+    fileName: String,
+    sheetName: String,
+    table: DynamicTable
+) {
+    try {
+        // Получаем DocumentFile для папки
+        val documentFile = androidx.documentfile.provider.DocumentFile
+            .fromTreeUri(context, folderUri)
+
+        // Проверяем существующий файл
+        val existingFile = documentFile?.findFile(fileName)
+        if (existingFile != null) {
+            Toast.makeText(context, "Файл уже существует. Удалите его или измените имя.", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        // Создаем новый файл
+        val newFile = documentFile?.createFile(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            fileName
+        )
+        newFile?.let { docFile ->
+            // Создаем данные для Excel
+            val excelData = createExcelData(
+                sheetName = sheetName,
+                table
+            )
+            // Записываем данные
+            context.contentResolver.openOutputStream(docFile.uri)?.use { outputStream ->
+                outputStream.write(excelData)
+                Toast.makeText(context, "Excel файл $fileName создан успешно!", Toast.LENGTH_LONG).show()
+            }
+        } ?: run {
+            Toast.makeText(context, "Не удалось создать файл", Toast.LENGTH_LONG).show()
+        }
+    } catch (e: Exception) {
+        Toast.makeText(context, "Ошибка создания Excel: ${e.message}", Toast.LENGTH_LONG).show()
+        e.printStackTrace()
+    }
+}
+
+
+fun createExcelData(
+    sheetName: String,
+    table: DynamicTable
+): ByteArray {
+    return try {
+        // Способ 1: Используем Apache POI (полнофункциональный)
+        createExcelWithApachePOI(sheetName, table)
+    } catch (e: NoClassDefFoundError) {
+        e.printStackTrace()
+        // Способ 2: Если POI не работает, создаем простой CSV в XLSX обертке
+        createSimpleExcelData(table)
+    }
+}
+
+
+// Альтернативная реализация без Apache POI (простые данные)
+fun createSimpleExcelData(
+    table: DynamicTable
+): ByteArray {
+    val content = buildString {
+        // Заголовки CSV
+        val listHeader=table.schema.columns.keys.toList()
+        append((0..<listHeader.size).joinToString(",") { listHeader[it] })
+        append("\n")
+
+        // Данные
+        val listRows = table.rows
+        for (row in 0..<listRows.size) {
+            val listCells = table.rows[row].data.values.toList()
+            append((0..<listCells.size).joinToString(",") { listCells[it] })
+            append("\n")
+        }
+    }
+    return content.toByteArray()
+}
+
+
+// Реализация с Apache POI
+fun createExcelWithApachePOI(
+    sheetName: String,
+    table: DynamicTable
+): ByteArray {
+    ByteArrayOutputStream().use { outputStream ->
+        val workbook = XSSFWorkbook()
+        val sheet = workbook.createSheet(sheetName)
+        // Создаем заголовки
+        val headerRow = sheet.createRow(0)
+        val listHeader=table.schema.columns.values.toList()
+        for (col in 0 until  listHeader.size) {
+            val cell = headerRow.createCell(col)
+            if(listHeader[col].displayName!=""){
+                cell.setCellValue(listHeader[col].displayName)
+            }
+        }
+        // Заполняем данными
+        val listRows = table.rows
+        for (rowNum in 1..listRows.size) {
+            val row = sheet.createRow(rowNum)
+            val listCells = table.rows[rowNum-1].data.values.toList()
+            for (col in 0 until listCells.size) {
+                val cell = row.createCell(col)
+                if(listCells[col]!=""){
+                    cell.setCellValue(listCells[col])
+                }
+            }
+        }
+        workbook.write(outputStream)
+        workbook.close()
+
+        return outputStream.toByteArray()
+    }
+}
 
