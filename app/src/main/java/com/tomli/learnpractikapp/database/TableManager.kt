@@ -87,7 +87,7 @@ class TableManager(private val repository: DynamicTableRepository, private val t
     }
 
     fun addRow(){
-        if(!dynamicTable.value!!.rows[0].data.isEmpty()){
+        try{
             var updatedTableRow: Map<String, String> = dynamicTable.value!!.rows[0].data.toMutableMap().apply {
                 keys.forEach{key->
                     this[key]=""
@@ -96,7 +96,7 @@ class TableManager(private val repository: DynamicTableRepository, private val t
             val newTableRow = dynamicTable.value?.rows!!.toMutableList()
             newTableRow.add(TableRow(schema = dynamicTable.value?.schema!!, data = updatedTableRow))
             _currentTable.value= DynamicTable(dynamicTable.value?.schema!!, newTableRow)
-        }else{
+        }catch (e: Exception){
             val tableRows: MutableMap<String, String> = mutableMapOf()
             dynamicTable.value?.schema!!.columns.toMutableMap().apply {
                 keys.forEach{key->

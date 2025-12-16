@@ -100,7 +100,7 @@ fun MainScreen(navController: NavController, colVM: DynVM = viewModel(factory = 
                 Spacer(modifier=Modifier.fillMaxWidth().height(innerPadding.calculateTopPadding()).background(color=Color(0x27000000)))
                 Box(modifier=Modifier.wrapContentHeight().fillMaxWidth()){
                     Text(text = "Коллекции", color = Color.White, modifier = Modifier.fillMaxWidth().padding(15.dp),
-                        textAlign = TextAlign.Center, fontSize = 22.sp)
+                        textAlign = TextAlign.Center, fontSize = 25.sp)
                     Image(painterResource(R.drawable.button_add), contentDescription = null,
                         modifier = Modifier.padding(15.dp).size(22.dp).align(Alignment.CenterEnd).clickable {
                             isCreateCollection.value=true })
@@ -116,7 +116,7 @@ fun MainScreen(navController: NavController, colVM: DynVM = viewModel(factory = 
                         showDropDown.value=true; itemId.value=item.id!!; itemName.value=item.name!!
                     }),
                         contentAlignment = Alignment.Center){
-                        Text(text=item.name!!, color=Color.White)
+                        Text(text=item.name!!, color=Color.White, fontSize = 21.sp)
                         DropdownMenu(expanded = showDropDown.value, onDismissRequest = { showDropDown.value = false }) {
                             DropdownMenuItem(text = { Text("Редактировать") },
                                 onClick = {isUpdateCollection.value=true; showDropDown.value= false })
@@ -184,7 +184,7 @@ fun CreateCollection(onDismiss:()->Unit, colVM: DynVM = viewModel(factory = DynV
                             Text(text="Введите число больше 0", color=Color.Gray)
                         }, label={Text(text="Количество столбцов")}, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                         OutlinedTextField(value=rows.value, onValueChange = {text-> rows.value=text}, placeholder={
-                            Text(text="Введите число >=0", color=Color.Gray)
+                            Text(text="Введите число от 0", color=Color.Gray)
                         }, label={Text(text="Количество строк")}, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                         Text(text="Создать", textAlign = TextAlign.Center, modifier=Modifier.padding(vertical = 30.dp).fillMaxWidth().clickable {
                             if(name.value!=""){
@@ -196,7 +196,7 @@ fun CreateCollection(onDismiss:()->Unit, colVM: DynVM = viewModel(factory = DynV
                                             schema=schema)
                                         onDismiss()
                                     }else{
-                                        Toast.makeText(context, "Неправильный ввод строк или столбцов", Toast.LENGTH_LONG).show()
+                                        Toast.makeText(context, "Количество строк или столбцов меньше допустимого", Toast.LENGTH_LONG).show()
                                     }
                                 }catch (e: Exception){
                                     Toast.makeText(context, "Неправильный ввод строк или столбцов", Toast.LENGTH_LONG).show()
@@ -271,7 +271,6 @@ fun UpdateCollection(onDismiss: () -> Unit, id: Int, origName: String, colVM: Dy
 fun ExportDialog(onDismiss: () -> Unit, id: Int, tableName: String, colVM: DynVM = viewModel(factory = DynVM.factory)){
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
 
     // Состояния
     var selectedFolderUri = remember { mutableStateOf<Uri?>(null) }
@@ -341,12 +340,12 @@ fun ExportDialog(onDismiss: () -> Unit, id: Int, tableName: String, colVM: DynVM
                     modifier = Modifier.padding(bottom = 20.dp).clickable {
                         if (selectedFolderUri.value != null && fileName.value.isNotBlank()) {
                             colVM.ExportFromDynamicTable(id, context, selectedFolderUri.value!!, fileName.value)
+                            onDismiss()
                         } else {
                             scope.launch {
-                                snackbarHostState.showSnackbar("Сначала выберите папку")
+                                Toast.makeText(context, "Сначала выберите папку", Toast.LENGTH_LONG).show()
                             }
                         }
-                        onDismiss()
                     }.padding(vertical = 10.dp).fillMaxWidth(),
                     textAlign = TextAlign.Center,
                     color = if (selectedFolderUri.value != null) Color(0xff00be19) else Color(0xffff0000)
