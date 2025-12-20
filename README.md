@@ -1,5 +1,6 @@
 ## Название
-Мои Коллекции
+Мои Коллекции<br>
+<img width="300" height="300" alt="Без названия227 (1)" src="https://github.com/user-attachments/assets/7912eb23-b493-4c4c-9074-c413c16a5874" />
 <br>
 
 ## Описание

@@ -1,15 +1,7 @@
 package com.tomli.learnpractikapp.database
 
-import androidx.room.ColumnInfo
-import androidx.room.TypeConverter
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 
-/*data class DynamicRow(
-    val tableId: Int,
-    val data: Map<String, Any?> = emptyMap()
-)*/
 
 @Serializable
 data class TableRow(

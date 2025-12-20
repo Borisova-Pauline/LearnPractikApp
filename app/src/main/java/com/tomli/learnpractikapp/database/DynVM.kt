@@ -120,13 +120,8 @@ class DynamicTableRepository(val dao: DaoData) {
 
     // Загружаем всю таблицу по её ID
     suspend fun loadTable(tableId: Int): Collections {
-        //val entity = dao.getTableById(tableId)
 
         // Десериализуем JSON обратно в объекты
-        /*return DynamicTable(
-            schema = Json.decodeFromString(entity.schema!!),
-            rows = Json.decodeFromString(entity.values!!)
-        )*/
         return dao.getTableById(tableId)
     }
 }
